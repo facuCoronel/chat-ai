@@ -8,7 +8,6 @@ class Platform(str, Enum):
     WHATSAPP = "whatsapp"
     INSTAGRAM = "instagram"
     FACEBOOK = "facebook"
-    DEFAULT = "default"
 
 
 class MessageType(str, Enum):

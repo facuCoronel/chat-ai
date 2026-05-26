@@ -6,7 +6,6 @@ app = FastAPI(
     title="Messaging Service",
     description="Webhook receiver for WhatsApp (and future Instagram/Facebook) messages.",
     version="0.1.0",
-    lifespan=lifespan,
 )
 
 app.include_router(router, prefix="/api/v1", tags=["webhook"])
