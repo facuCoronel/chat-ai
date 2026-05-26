@@ -167,6 +167,7 @@ def _build_prompt_v1(sender_role: str, current_text: str, context_summary: str) 
     return f"""You are a conversational intelligence analyst for a commercial messaging platform.
 Analyze the following message and respond ONLY with valid JSON matching the required schema.
 No markdown, no code fences, no extra text.
+Write the values of "summary", "insights", and "recommended_action" in Spanish.
 
 CONVERSATION CONTEXT (prior messages, oldest first):
 {context_summary}
