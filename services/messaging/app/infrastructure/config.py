@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     APP_SECRET: str
     DATABASE_URL: str = "sqlite+aiosqlite:///./messaging.db"
     LOG_LEVEL: str = "INFO"
+    OLLAMA_BASE_URL: str
+    OLLAMA_MODEL: str
+    OLLAMA_PROMPT_VERSION: str
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

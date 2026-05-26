@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.infrastructure.routes.outgoing_message_router import router as outgoing_router
 from app.infrastructure.routes.webhook_router import router
 
 app = FastAPI(
@@ -9,6 +10,7 @@ app = FastAPI(
 )
 
 app.include_router(router, prefix="/api/v1", tags=["webhook"])
+app.include_router(outgoing_router, prefix="/api/v1", tags=["messages"])
 
 
 @app.get("/health", include_in_schema=False)

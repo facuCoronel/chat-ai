@@ -9,6 +9,38 @@ class Base(DeclarativeBase):
     pass
 
 
+class InsightORM(Base):
+    __tablename__ = "message_insights"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    wamid: Mapped[str] = mapped_column(String(255), nullable=False)
+    platform: Mapped[str] = mapped_column(String(20), nullable=False)
+    sender_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    sender_role: Mapped[str] = mapped_column(String(20), nullable=False)
+    sentiment: Mapped[str] = mapped_column(String(20), nullable=False)
+    main_emotion: Mapped[str] = mapped_column(String(30), nullable=False)
+    intent: Mapped[str] = mapped_column(String(30), nullable=False)
+    urgency: Mapped[str] = mapped_column(String(10), nullable=False)
+    commercial_risk: Mapped[str] = mapped_column(String(10), nullable=False)
+    summary: Mapped[str] = mapped_column(String(1024), nullable=False)
+    recommended_action: Mapped[str] = mapped_column(String(1024), nullable=False)
+    insights: Mapped[dict] = mapped_column(JSON, nullable=False)
+    raw_model_response: Mapped[dict] = mapped_column(JSON, nullable=False)
+    model_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_message_insights_message_id", "message_id"),
+        Index("ix_message_insights_wamid", "wamid"),
+        Index("ix_message_insights_sentiment", "sentiment"),
+        Index("ix_message_insights_intent", "intent"),
+        Index("ix_message_insights_commercial_risk", "commercial_risk"),
+        Index("ix_message_insights_created_at", "created_at"),
+    )
+
+
 class MessageORM(Base):
     __tablename__ = "incoming_messages"
 
