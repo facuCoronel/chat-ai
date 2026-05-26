@@ -7,7 +7,7 @@ services:
     environment:
       WEBHOOK_VERIFY_TOKEN: ${WEBHOOK_VERIFY_TOKEN:-dev-verify-token}
       APP_SECRET: ${APP_SECRET:-dev-app-secret}
-      DATABASE_URL: postgresql+asyncpg://messaging:messaging@db:5432/messaging
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://messaging:messaging@db:5432/messaging}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:

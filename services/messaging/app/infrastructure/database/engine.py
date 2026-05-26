@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession, create_async_engine
 
-from app.infrastructure.config import get_settings
+from app.infrastructure.config import get_database_settings
 from app.infrastructure.database.models import Base
 
 _engine = None
@@ -10,9 +10,9 @@ _session_factory = None
 def _get_engine():
     global _engine
     if _engine is None:
-        settings = get_settings()
+        settings = get_database_settings()
         _engine = create_async_engine(
-            settings.DATABASE_URL,
+            settings.sqlalchemy_database_url,
             echo=settings.LOG_LEVEL == "DEBUG",
         )
     return _engine

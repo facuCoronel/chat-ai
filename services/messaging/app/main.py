@@ -1,16 +1,6 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 
-from app.infrastructure.database.engine import create_tables
 from app.infrastructure.routes.webhook_router import router
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await create_tables()
-    yield
-
 
 app = FastAPI(
     title="Messaging Service",
@@ -20,3 +10,8 @@ app = FastAPI(
 )
 
 app.include_router(router, prefix="/api/v1", tags=["webhook"])
+
+
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}

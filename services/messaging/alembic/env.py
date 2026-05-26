@@ -1,10 +1,10 @@
 import asyncio
-import os
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.infrastructure.config import get_database_settings
 from app.infrastructure.database.models import Base
 
 config = context.config
@@ -14,7 +14,7 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./messaging.db")
+    return get_database_settings().sqlalchemy_database_url
 
 
 def run_migrations_offline() -> None:
