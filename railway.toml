@@ -1,0 +1,16 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "services/messaging/**",
+  "Dockerfile",
+  "railway.toml",
+  ".dockerignore",
+]
+
+[deploy]
+startCommand = "/bin/sh -c \"exec ./start.sh\""
+healthcheckPath = "/docs"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
