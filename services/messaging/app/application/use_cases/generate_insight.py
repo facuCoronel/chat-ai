@@ -220,9 +220,11 @@ def _parse_ollama_response(raw: str, wamid: str = "") -> dict:
     missing = _REQUIRED_KEYS - data.keys()
     if missing:
         logger.error(
-            "ollama response missing keys wamid=%s missing=%s",
+            "ollama response missing keys wamid=%s missing=%s raw_keys=%s raw_excerpt=%.300s",
             wamid,
             missing,
+            list(data.keys()),
+            raw,
         )
         raise ValueError(f"Ollama response missing required keys: {missing}")
 

@@ -23,6 +23,7 @@ class HttpxOllamaClient(IOllamaClient):
             "prompt": prompt,
             "stream": False,
             "format": "json",
+            "think": False,
         }
         logger.debug("ollama request url=%s model=%s", url, model)
         async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
