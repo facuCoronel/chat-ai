@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "clean-architecture": {
+      "source": "wondelai/skills",
+      "sourceType": "github",
+      "skillPath": "clean-architecture/SKILL.md",
+      "computedHash": "df8076799cc198bfab130f1069cea4755c85fadcdc3c03463ee1c24e4ebbf399"
+    },
+    "whatsapp-cloud-api": {
+      "source": "bellopushon/whatsapp-cloud-api",
+      "sourceType": "github",
+      "skillPath": "skills/whatsapp-cloud-api/SKILL.md",
+      "computedHash": "ede0274890801c402b4b358ba639a819eb41bb9d234c6289fbeace758b32fffc"
+    }
+  }
+}
