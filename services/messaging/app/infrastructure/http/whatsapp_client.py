@@ -34,12 +34,9 @@ class HttpxWhatsAppClient(IWhatsAppClient):
                 response = await client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
             except httpx.HTTPStatusError as exc:
-                logger.error(
-                    "whatsapp send error status=%d body=%.300s",
-                    exc.response.status_code,
-                    exc.response.text,
-                )
-                raise
+                body = exc.response.text
+                logger.error("whatsapp send error status=%d body=%s", exc.response.status_code, body)
+                raise RuntimeError(f"WhatsApp API {exc.response.status_code}: {body}") from exc
 
         wamid = response.json()["messages"][0]["id"]
         logger.info("whatsapp send ok wamid=%s to=%s", wamid, to)
