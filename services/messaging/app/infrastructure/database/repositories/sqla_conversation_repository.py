@@ -23,18 +23,13 @@ class SqlaConversationRepository(IConversationRepository):
         self._session = session
 
     async def list_contacts(self, business_phone_id: str, platform: str) -> list[Contact]:
-        _involves_business = or_(
-            MessageORM.sender_id == business_phone_id,
-            MessageORM.recipient_id == business_phone_id,
-        )
-
         # Subquery 1: last message timestamp per contact
         last_sub = (
             select(
                 _buyer_phone.label("contact_id"),
                 func.max(MessageORM.received_at).label("last_at"),
             )
-            .where(MessageORM.platform == platform, _involves_business)
+            .where(MessageORM.platform == platform)
             .group_by(_buyer_phone)
             .subquery()
         )
@@ -51,7 +46,6 @@ class SqlaConversationRepository(IConversationRepository):
                     ) == last_sub.c.contact_id,
                     MessageORM.received_at == last_sub.c.last_at,
                     MessageORM.platform == platform,
-                    _involves_business,
                 ),
             )
             .order_by(last_sub.c.last_at.desc())
@@ -73,7 +67,6 @@ class SqlaConversationRepository(IConversationRepository):
                 MessageORM.platform == platform,
                 MessageORM.sender_role == _BUYER,
                 MessageORM.sender_name.isnot(None),
-                _involves_business,
             )
             .subquery()
         )
