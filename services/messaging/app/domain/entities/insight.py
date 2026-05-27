@@ -3,14 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
-from app.domain.entities.message import Platform
-
-
-class SenderRole(str, Enum):
-    BUYER = "buyer"
-    SELLER = "seller"
-    UNKNOWN = "unknown"
+from app.domain.entities.message import Platform, SenderRole
 
 
 class Sentiment(str, Enum):
@@ -63,6 +58,7 @@ class MessageInsight:
     wamid: str
     platform: Platform
     sender_id: str
+    recipient_id: str
     sender_role: SenderRole
     sentiment: Sentiment
     main_emotion: MainEmotion
@@ -76,3 +72,4 @@ class MessageInsight:
     model_name: str
     prompt_version: str
     created_at: datetime
+    sender_name: Optional[str] = None

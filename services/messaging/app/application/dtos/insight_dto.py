@@ -15,9 +15,11 @@ class GenerateInsightRequest:
     wamid: str
     platform: Platform
     sender_id: str
+    recipient_id: str
     sender_role: str
     message_type: MessageType
     received_at: datetime
+    sender_name: Optional[str] = None
     raw_text: Optional[str] = None
 
 

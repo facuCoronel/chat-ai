@@ -65,8 +65,9 @@ class GenerateInsightUseCase:
             )
 
         async with self._repo_factory() as repo:
-            history = await repo.find_recent_by_sender(
+            history = await repo.find_recent_by_conversation(
                 sender_id=request.sender_id,
+                recipient_id=request.recipient_id,
                 platform=request.platform.value,
                 limit=10,
             )
@@ -105,6 +106,8 @@ class GenerateInsightUseCase:
             wamid=request.wamid,
             platform=request.platform,
             sender_id=request.sender_id,
+            recipient_id=request.recipient_id,
+            sender_name=request.sender_name,
             sender_role=SenderRole(parsed["sender_role"]),
             sentiment=Sentiment(parsed["sentiment"]),
             main_emotion=MainEmotion(parsed["main_emotion"]),
@@ -146,7 +149,7 @@ def _build_context_summary(history: list[MessageInsight]) -> str:
     if not history:
         return "No prior context."
     lines = [
-        f"[{i.sender_role.value}] {i.intent.value}: \"{i.summary}\" → {i.sentiment.value}"
+        f"[{i.sender_role.value} - {i.sender_name or i.sender_id}] {i.intent.value}: \"{i.summary}\" → {i.sentiment.value}"
         for i in history
     ]
     return "\n".join(lines)

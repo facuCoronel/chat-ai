@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.message import IncomingMessage, MessageType, Platform
+from app.domain.entities.message import IncomingMessage, MessageType, Platform, SenderRole
 from app.domain.repositories.message_repository import IMessageRepository
 from app.infrastructure.database.models import MessageORM
 
@@ -47,6 +47,7 @@ def _to_orm(entity: IncomingMessage) -> MessageORM:
         sender_id=entity.sender_id,
         sender_name=entity.sender_name,
         recipient_id=entity.recipient_id,
+        sender_role=entity.sender_role.value,
         message_type=entity.message_type.value,
         raw_text=entity.raw_text,
         raw_payload=entity.raw_payload,
@@ -63,6 +64,7 @@ def _to_entity(orm: MessageORM) -> IncomingMessage:
         sender_id=orm.sender_id,
         sender_name=orm.sender_name,
         recipient_id=orm.recipient_id,
+        sender_role=SenderRole(orm.sender_role),
         message_type=MessageType(orm.message_type),
         raw_text=orm.raw_text,
         raw_payload=orm.raw_payload,

@@ -17,6 +17,6 @@ class IInsightRepository(ABC):
     async def find_by_wamid(self, wamid: str) -> Optional[MessageInsight]: ...
 
     @abstractmethod
-    async def find_recent_by_sender(
-        self, sender_id: str, platform: str, limit: int
+    async def find_recent_by_conversation(
+        self, sender_id: str, recipient_id: str, platform: str, limit: int
     ) -> list[MessageInsight]: ...

@@ -10,6 +10,12 @@ class Platform(str, Enum):
     FACEBOOK = "facebook"
 
 
+class SenderRole(str, Enum):
+    BUYER = "buyer"
+    SELLER = "seller"
+    UNKNOWN = "unknown"
+
+
 class MessageType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
@@ -40,5 +46,6 @@ class IncomingMessage:
     raw_payload: dict
     received_at: datetime
     created_at: datetime
+    sender_role: SenderRole = SenderRole.UNKNOWN
     sender_name: Optional[str] = None
     raw_text: Optional[str] = None

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.insight import (
@@ -44,12 +44,18 @@ class SqlaInsightRepository(IInsightRepository):
         orm = result.scalar_one_or_none()
         return _to_entity(orm) if orm else None
 
-    async def find_recent_by_sender(
-        self, sender_id: str, platform: str, limit: int
+    async def find_recent_by_conversation(
+        self, sender_id: str, recipient_id: str, platform: str, limit: int
     ) -> list[MessageInsight]:
         result = await self._session.execute(
             select(InsightORM)
-            .where(InsightORM.sender_id == sender_id, InsightORM.platform == platform)
+            .where(
+                InsightORM.platform == platform,
+                or_(
+                    and_(InsightORM.sender_id == sender_id, InsightORM.recipient_id == recipient_id),
+                    and_(InsightORM.sender_id == recipient_id, InsightORM.recipient_id == sender_id),
+                ),
+            )
             .order_by(InsightORM.created_at.desc())
             .limit(limit)
         )
@@ -64,6 +70,8 @@ def _to_orm(entity: MessageInsight) -> InsightORM:
         wamid=entity.wamid,
         platform=entity.platform.value,
         sender_id=entity.sender_id,
+        recipient_id=entity.recipient_id,
+        sender_name=entity.sender_name,
         sender_role=entity.sender_role.value,
         sentiment=entity.sentiment.value,
         main_emotion=entity.main_emotion.value,
@@ -87,6 +95,8 @@ def _to_entity(orm: InsightORM) -> MessageInsight:
         wamid=orm.wamid,
         platform=Platform(orm.platform),
         sender_id=orm.sender_id,
+        recipient_id=orm.recipient_id,
+        sender_name=orm.sender_name,
         sender_role=SenderRole(orm.sender_role),
         sentiment=Sentiment(orm.sentiment),
         main_emotion=MainEmotion(orm.main_emotion),

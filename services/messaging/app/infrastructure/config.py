@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str
     OLLAMA_MODEL: str
     OLLAMA_PROMPT_VERSION: str
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_ACCESS_TOKEN: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

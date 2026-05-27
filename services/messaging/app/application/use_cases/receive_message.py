@@ -7,7 +7,7 @@ from typing import Optional, TYPE_CHECKING
 from app.application.dtos.insight_dto import GenerateInsightRequest
 from app.application.dtos.message_dto import ReceiveMessageRequest, ReceiveMessageResponse
 from app.application.use_cases.generate_insight import _run_insight_safely
-from app.domain.entities.message import IncomingMessage
+from app.domain.entities.message import IncomingMessage, SenderRole
 from app.domain.repositories.message_repository import IMessageRepository
 
 if TYPE_CHECKING:
@@ -50,6 +50,7 @@ class ReceiveMessageUseCase:
             sender_id=request.sender_id,
             sender_name=request.sender_name,
             recipient_id=request.recipient_id,
+            sender_role=SenderRole(sender_role),
             message_type=request.message_type,
             raw_text=request.raw_text,
             raw_payload=request.raw_payload,
@@ -65,7 +66,9 @@ class ReceiveMessageUseCase:
                 wamid=saved.wamid,
                 platform=saved.platform,
                 sender_id=saved.sender_id,
+                recipient_id=saved.recipient_id,
                 sender_role=sender_role,
+                sender_name=saved.sender_name,
                 raw_text=saved.raw_text,
                 message_type=saved.message_type,
                 received_at=saved.received_at,
