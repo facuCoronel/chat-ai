@@ -33,7 +33,7 @@ class ReceiveMessageUseCase:
     async def execute(
         self,
         request: ReceiveMessageRequest,
-        sender_role: str = "buyer",
+        sender_role: SenderRole = SenderRole.BUYER,
     ) -> ReceiveMessageResponse:
         if await self._repo.exists_by_wamid(request.wamid):
             return ReceiveMessageResponse(
@@ -50,7 +50,7 @@ class ReceiveMessageUseCase:
             sender_id=request.sender_id,
             sender_name=request.sender_name,
             recipient_id=request.recipient_id,
-            sender_role=SenderRole(sender_role),
+            sender_role=sender_role,
             message_type=request.message_type,
             raw_text=request.raw_text,
             raw_payload=request.raw_payload,
@@ -67,7 +67,7 @@ class ReceiveMessageUseCase:
                 platform=saved.platform,
                 sender_id=saved.sender_id,
                 recipient_id=saved.recipient_id,
-                sender_role=sender_role,
+                sender_role=sender_role.value,
                 sender_name=saved.sender_name,
                 raw_text=saved.raw_text,
                 message_type=saved.message_type,

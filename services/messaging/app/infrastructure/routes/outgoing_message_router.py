@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import logging
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.application.dtos.insight_dto import RecordOutgoingMessageRequest
-from app.application.use_cases.record_outgoing_message import RecordOutgoingMessageUseCase
-from app.domain.entities.message import MessageType, Platform
-from app.infrastructure.dependencies import get_record_outgoing_use_case
+from app.application.dtos.message_dto import ReceiveMessageRequest
+from app.application.use_cases.receive_message import ReceiveMessageUseCase
+from app.domain.entities.message import MessageType, Platform, SenderRole
+from app.infrastructure.dependencies import get_receive_message_use_case
 
 logger = logging.getLogger(__name__)
 
@@ -24,28 +26,27 @@ class OutgoingMessagePayload(BaseModel):
     raw_text: Optional[str] = None
     raw_payload: dict[str, Any] = {}
     wamid_local: str = ""
+    sender_name: Optional[str] = None
 
 
 @router.post("/messages/outgoing", status_code=200)
 async def record_outgoing_message(
     payload: OutgoingMessagePayload,
-    use_case: RecordOutgoingMessageUseCase = Depends(get_record_outgoing_use_case),
+    use_case: ReceiveMessageUseCase = Depends(get_receive_message_use_case),
 ):
-    """Records a seller/agent outgoing message and triggers insight generation.
-
-    WhatsApp status webhooks do not include message text, so outgoing messages
-    must be registered explicitly at send time via this endpoint.
-    """
-    request = RecordOutgoingMessageRequest(
+    """Records a seller message sent externally (e.g. from another service) and triggers insight generation."""
+    request = ReceiveMessageRequest(
+        wamid=payload.wamid_local or str(uuid.uuid4()),
         platform=Platform(payload.platform),
         sender_id=payload.sender_id,
         recipient_id=payload.recipient_id,
         message_type=MessageType(payload.message_type),
         raw_text=payload.raw_text,
         raw_payload=payload.raw_payload,
-        wamid_local=payload.wamid_local,
+        received_at_unix=int(datetime.now(timezone.utc).timestamp()),
+        sender_name=payload.sender_name,
     )
-    response = await use_case.execute(request)
+    response = await use_case.execute(request, sender_role=SenderRole.SELLER)
     logger.info(
         "outgoing message recorded wamid=%s was_duplicate=%s",
         response.wamid,

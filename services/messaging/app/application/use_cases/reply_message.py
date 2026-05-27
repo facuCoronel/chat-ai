@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from app.application.dtos.message_dto import ReceiveMessageRequest, ReceiveMessageResponse
 from app.application.use_cases.receive_message import ReceiveMessageUseCase
-from app.domain.entities.message import MessageType, Platform
+from app.domain.entities.message import MessageType, Platform, SenderRole
 
 if TYPE_CHECKING:
     from app.domain.services.whatsapp_client import IWhatsAppClient
@@ -45,4 +45,4 @@ class ReplyMessageUseCase:
             received_at_unix=int(datetime.now(timezone.utc).timestamp()),
             sender_name=sender_name,
         )
-        return await self._receive_uc.execute(request, sender_role="seller")
+        return await self._receive_uc.execute(request, sender_role=SenderRole.SELLER)

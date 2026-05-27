@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.generate_insight import GenerateInsightUseCase
 from app.application.use_cases.receive_message import ReceiveMessageUseCase
-from app.application.use_cases.record_outgoing_message import RecordOutgoingMessageUseCase
 from app.application.use_cases.reply_message import ReplyMessageUseCase
 from app.domain.services.ollama_client import IOllamaClient
 from app.domain.services.whatsapp_client import IWhatsAppClient
@@ -53,12 +52,6 @@ async def get_receive_message_use_case(
 ) -> ReceiveMessageUseCase:
     repo = SqlaMessageRepository(session)
     return ReceiveMessageUseCase(repo, insight_generator=insight_generator)
-
-
-async def get_record_outgoing_use_case(
-    receive_uc: ReceiveMessageUseCase = Depends(get_receive_message_use_case),
-) -> RecordOutgoingMessageUseCase:
-    return RecordOutgoingMessageUseCase(receive_uc)
 
 
 def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsAppClient:
