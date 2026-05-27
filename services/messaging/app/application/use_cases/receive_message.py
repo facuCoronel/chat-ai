@@ -4,14 +4,15 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 
+from app.application._background import run_insight_safely
 from app.application.dtos.insight_dto import GenerateInsightRequest
 from app.application.dtos.message_dto import ReceiveMessageRequest, ReceiveMessageResponse
-from app.application.use_cases.generate_insight import _run_insight_safely
 from app.domain.entities.message import IncomingMessage, SenderRole
 from app.domain.repositories.message_repository import IMessageRepository
 
 if TYPE_CHECKING:
     from app.application.ports.insight_generator import IInsightGenerator
+    from app.application.ports.message_publisher import IMessagePublisher
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +27,11 @@ class ReceiveMessageUseCase:
         self,
         repository: IMessageRepository,
         insight_generator: Optional["IInsightGenerator"] = None,
+        message_publisher: Optional["IMessagePublisher"] = None,
     ) -> None:
         self._repo = repository
         self._insight_generator = insight_generator
+        self._message_publisher = message_publisher
 
     async def execute(
         self,
@@ -60,6 +63,9 @@ class ReceiveMessageUseCase:
 
         saved = await self._repo.save(message)
 
+        if self._message_publisher is not None:
+            asyncio.create_task(self._message_publisher.publish(saved))
+
         if self._insight_generator is not None:
             insight_request = GenerateInsightRequest(
                 message_id=saved.id,
@@ -74,7 +80,7 @@ class ReceiveMessageUseCase:
                 received_at=saved.received_at,
             )
             asyncio.create_task(
-                _run_insight_safely(self._insight_generator, insight_request)
+                run_insight_safely(self._insight_generator, insight_request)
             )
 
         return ReceiveMessageResponse(

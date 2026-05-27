@@ -16,6 +16,7 @@ from app.infrastructure.database.factories.insight_repository_factory import (
 from app.infrastructure.database.repositories.sqla_message_repository import SqlaMessageRepository
 from app.infrastructure.http.ollama_client import HttpxOllamaClient
 from app.infrastructure.http.whatsapp_client import HttpxWhatsAppClient
+from app.infrastructure.websocket.connection_manager import WebSocketConnectionManager, connection_manager
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -46,12 +47,17 @@ def get_generate_insight_use_case(
     )
 
 
+def get_connection_manager() -> WebSocketConnectionManager:
+    return connection_manager
+
+
 async def get_receive_message_use_case(
     session: AsyncSession = Depends(get_db_session),
     insight_generator: GenerateInsightUseCase = Depends(get_generate_insight_use_case),
+    publisher: WebSocketConnectionManager = Depends(get_connection_manager),
 ) -> ReceiveMessageUseCase:
     repo = SqlaMessageRepository(session)
-    return ReceiveMessageUseCase(repo, insight_generator=insight_generator)
+    return ReceiveMessageUseCase(repo, insight_generator=insight_generator, message_publisher=publisher)
 
 
 def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsAppClient:
@@ -63,11 +69,16 @@ def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsApp
 
 async def get_reply_use_case(
     wa_client: IWhatsAppClient = Depends(get_whatsapp_client),
-    receive_uc: ReceiveMessageUseCase = Depends(get_receive_message_use_case),
+    session: AsyncSession = Depends(get_db_session),
+    insight_generator: GenerateInsightUseCase = Depends(get_generate_insight_use_case),
+    publisher: WebSocketConnectionManager = Depends(get_connection_manager),
     settings: Settings = Depends(get_settings),
 ) -> ReplyMessageUseCase:
+    repo = SqlaMessageRepository(session)
     return ReplyMessageUseCase(
         whatsapp_client=wa_client,
-        receive_uc=receive_uc,
+        repository=repo,
         phone_number_id=settings.WHATSAPP_PHONE_NUMBER_ID,
+        insight_generator=insight_generator,
+        message_publisher=publisher,
     )

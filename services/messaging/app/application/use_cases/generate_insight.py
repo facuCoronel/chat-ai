@@ -235,20 +235,3 @@ def _parse_ollama_response(raw: str, wamid: str = "") -> dict:
     return data
 
 
-async def _run_insight_safely(
-    generator: "IInsightGenerator",
-    request: GenerateInsightRequest,
-) -> None:
-    """Fire-and-forget wrapper. Logs errors without propagating them."""
-    logger.debug(
-        "insight task dispatched wamid=%s sender_role=%s",
-        request.wamid,
-        request.sender_role,
-    )
-    try:
-        await generator.execute(request)
-    except Exception:
-        logger.exception(
-            "insight generation failed wamid=%s — message is saved, insight skipped",
-            request.wamid,
-        )
