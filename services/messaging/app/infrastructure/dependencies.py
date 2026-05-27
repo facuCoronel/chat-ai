@@ -4,6 +4,8 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.generate_insight import GenerateInsightUseCase
+from app.application.use_cases.get_conversation import GetConversationUseCase
+from app.application.use_cases.list_contacts import ListContactsUseCase
 from app.application.use_cases.receive_message import ReceiveMessageUseCase
 from app.application.use_cases.reply_message import ReplyMessageUseCase
 from app.domain.services.ollama_client import IOllamaClient
@@ -13,6 +15,7 @@ from app.infrastructure.database.engine import get_session_factory
 from app.infrastructure.database.factories.insight_repository_factory import (
     SqlaInsightRepositoryFactory,
 )
+from app.infrastructure.database.repositories.sqla_conversation_repository import SqlaConversationRepository
 from app.infrastructure.database.repositories.sqla_message_repository import SqlaMessageRepository
 from app.infrastructure.http.ollama_client import HttpxOllamaClient
 from app.infrastructure.http.whatsapp_client import HttpxWhatsAppClient
@@ -65,6 +68,22 @@ def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsApp
         phone_number_id=settings.WHATSAPP_PHONE_NUMBER_ID,
         access_token=settings.WHATSAPP_ACCESS_TOKEN,
     )
+
+
+async def get_list_contacts_use_case(
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> ListContactsUseCase:
+    repo = SqlaConversationRepository(session)
+    return ListContactsUseCase(repo, phone_number_id=settings.WHATSAPP_PHONE_NUMBER_ID)
+
+
+async def get_get_conversation_use_case(
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> GetConversationUseCase:
+    repo = SqlaConversationRepository(session)
+    return GetConversationUseCase(repo, phone_number_id=settings.WHATSAPP_PHONE_NUMBER_ID)
 
 
 async def get_reply_use_case(
