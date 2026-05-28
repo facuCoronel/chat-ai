@@ -14,6 +14,16 @@ def normalize_wa_phone(phone: str) -> str:
     return phone
 
 
+def wa_api_phone(phone: str) -> str:
+    """
+    WhatsApp Cloud API rejects Argentine numbers with the 9 (549XXXXXXXXXX).
+    Strip it for outbound API calls: 549XXXXXXXXXX -> 54XXXXXXXXXX.
+    """
+    if re.match(r'^549\d{10}$', phone):
+        return '54' + phone[3:]
+    return phone
+
+
 def build_conversation_data(
     business_account_ids: set[str],
     sender_id: str,
