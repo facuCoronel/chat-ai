@@ -12,7 +12,7 @@ from app.application.dtos.message_dto import ReceiveMessageResponse
 from app.domain.entities.message import IncomingMessage, MessageType, Platform, SenderRole
 from app.domain.repositories.business_account_repository import IBusinessAccountRepository
 from app.domain.repositories.message_repository import IMessageRepository
-from app.domain.services.conversation_builder import build_conversation_data
+from app.domain.services.conversation_builder import build_conversation_data, normalize_wa_phone
 
 if TYPE_CHECKING:
     from app.application.ports.insight_generator import IInsightGenerator
@@ -53,17 +53,17 @@ class ReplyMessageUseCase:
         # With one active account, use it directly.
         # When multiple accounts exist, the caller should pass a from_account_id (future).
         business_account_id = next(iter(business_ids))
-        customer_external_id = to
+        customer_external_id = normalize_wa_phone(to)
         conversation_id = f"{business_account_id}_{customer_external_id}"
 
-        result = await self._wa.send_text(to=to, text=text, phone_number_id=business_account_id)
+        result = await self._wa.send_text(to=customer_external_id, text=text, phone_number_id=business_account_id)
 
         message = IncomingMessage(
             id=str(uuid.uuid4()),
             wamid=result.wamid,
             platform=platform,
             sender_id=business_account_id,
-            recipient_id=to,
+            recipient_id=customer_external_id,
             sender_role=SenderRole.SELLER,
             message_type=MessageType.TEXT,
             raw_text=text,

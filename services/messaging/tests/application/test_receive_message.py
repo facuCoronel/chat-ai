@@ -44,8 +44,10 @@ async def test_new_message_is_saved():
     mock_repo = AsyncMock()
     mock_repo.exists_by_wamid.return_value = False
     mock_repo.save.return_value = _make_entity(request)
+    mock_business_repo = AsyncMock()
+    mock_business_repo.get_active_external_ids.return_value = {request.recipient_id}
 
-    use_case = ReceiveMessageUseCase(mock_repo)
+    use_case = ReceiveMessageUseCase(mock_repo, mock_business_repo)
     response = await use_case.execute(request)
 
     mock_repo.exists_by_wamid.assert_called_once_with(request.wamid)
@@ -60,8 +62,9 @@ async def test_duplicate_message_is_skipped():
     request = _make_request()
     mock_repo = AsyncMock()
     mock_repo.exists_by_wamid.return_value = True
+    mock_business_repo = AsyncMock()
 
-    use_case = ReceiveMessageUseCase(mock_repo)
+    use_case = ReceiveMessageUseCase(mock_repo, mock_business_repo)
     response = await use_case.execute(request)
 
     mock_repo.save.assert_not_called()
@@ -83,8 +86,10 @@ async def test_message_entity_fields_are_set_correctly():
         return entity
 
     mock_repo.save.side_effect = capture_save
+    mock_business_repo = AsyncMock()
+    mock_business_repo.get_active_external_ids.return_value = {request.recipient_id}
 
-    use_case = ReceiveMessageUseCase(mock_repo)
+    use_case = ReceiveMessageUseCase(mock_repo, mock_business_repo)
     await use_case.execute(request)
 
     assert saved_entity is not None

@@ -63,6 +63,7 @@ class SqlaConversationRepository(IConversationRepository):
                     MessageORM.platform == platform,
                 ),
             )
+            .where(_biz_filter)
             .order_by(last_sub.c.last_at.desc())
         )
 
