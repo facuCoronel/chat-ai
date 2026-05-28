@@ -53,6 +53,9 @@ def _to_orm(entity: IncomingMessage) -> MessageORM:
         raw_payload=entity.raw_payload,
         received_at=entity.received_at,
         created_at=entity.created_at,
+        conversation_id=entity.conversation_id,
+        business_account_id=entity.business_account_id,
+        customer_external_id=entity.customer_external_id,
     )
 
 
@@ -70,4 +73,7 @@ def _to_entity(orm: MessageORM) -> IncomingMessage:
         raw_payload=orm.raw_payload,
         received_at=orm.received_at,
         created_at=orm.created_at,
+        conversation_id=orm.conversation_id,
+        business_account_id=orm.business_account_id,
+        customer_external_id=orm.customer_external_id,
     )

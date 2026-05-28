@@ -1,12 +1,26 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, JSON, String
+from sqlalchemy import Boolean, DateTime, Index, JSON, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class BusinessAccountORM(Base):
+    __tablename__ = "business_accounts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    external_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("ix_business_accounts_external_id", "external_id", unique=True),
+    )
 
 
 class InsightORM(Base):
@@ -58,9 +72,14 @@ class MessageORM(Base):
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    conversation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    business_account_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    customer_external_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     __table_args__ = (
         Index("ix_incoming_messages_platform", "platform"),
         Index("ix_incoming_messages_sender_id", "sender_id"),
         Index("ix_incoming_messages_received_at", "received_at"),
+        Index("ix_incoming_messages_conversation_id", "conversation_id"),
+        Index("ix_incoming_messages_customer_external_id", "customer_external_id"),
     )

@@ -8,7 +8,9 @@ from app.application._background import run_insight_safely
 from app.application.dtos.insight_dto import GenerateInsightRequest
 from app.application.dtos.message_dto import ReceiveMessageRequest, ReceiveMessageResponse
 from app.domain.entities.message import IncomingMessage, SenderRole
+from app.domain.repositories.business_account_repository import IBusinessAccountRepository
 from app.domain.repositories.message_repository import IMessageRepository
+from app.domain.services.conversation_builder import build_conversation_data
 
 if TYPE_CHECKING:
     from app.application.ports.insight_generator import IInsightGenerator
@@ -26,10 +28,12 @@ class ReceiveMessageUseCase:
     def __init__(
         self,
         repository: IMessageRepository,
+        business_account_repo: IBusinessAccountRepository,
         insight_generator: Optional["IInsightGenerator"] = None,
         message_publisher: Optional["IMessagePublisher"] = None,
     ) -> None:
         self._repo = repository
+        self._business_account_repo = business_account_repo
         self._insight_generator = insight_generator
         self._message_publisher = message_publisher
 
@@ -46,6 +50,25 @@ class ReceiveMessageUseCase:
                 platform=request.platform.value,
             )
 
+        business_ids = await self._business_account_repo.get_active_external_ids()
+        try:
+            conversation_id, business_account_id, customer_external_id = build_conversation_data(
+                business_ids, request.sender_id, request.recipient_id
+            )
+        except ValueError:
+            logger.warning(
+                "Rejected incoming message wamid=%s: no matching business account (sender=%s recipient=%s)",
+                request.wamid,
+                request.sender_id,
+                request.recipient_id,
+            )
+            return ReceiveMessageResponse(
+                message_id="",
+                wamid=request.wamid,
+                was_duplicate=False,
+                platform=request.platform.value,
+            )
+
         message = IncomingMessage(
             id=str(uuid.uuid4()),
             wamid=request.wamid,
@@ -59,6 +82,9 @@ class ReceiveMessageUseCase:
             raw_payload=request.raw_payload,
             received_at=datetime.fromtimestamp(request.received_at_unix, tz=timezone.utc),
             created_at=datetime.now(tz=timezone.utc),
+            conversation_id=conversation_id,
+            business_account_id=business_account_id,
+            customer_external_id=customer_external_id,
         )
 
         saved = await self._repo.save(message)

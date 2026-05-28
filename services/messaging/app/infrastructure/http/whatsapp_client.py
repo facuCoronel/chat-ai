@@ -12,13 +12,12 @@ _GRAPH_API_BASE = "https://graph.facebook.com/v20.0"
 
 
 class HttpxWhatsAppClient(IWhatsAppClient):
-    def __init__(self, phone_number_id: str, access_token: str, timeout: float = 15.0) -> None:
-        self._phone_number_id = phone_number_id
+    def __init__(self, access_token: str, timeout: float = 15.0) -> None:
         self._access_token = access_token
         self._timeout = timeout
 
-    async def send_text(self, to: str, text: str) -> WhatsAppSendResult:
-        url = f"{_GRAPH_API_BASE}/{self._phone_number_id}/messages"
+    async def send_text(self, to: str, text: str, phone_number_id: str) -> WhatsAppSendResult:
+        url = f"{_GRAPH_API_BASE}/{phone_number_id}/messages"
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",

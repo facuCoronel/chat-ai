@@ -11,6 +11,6 @@ class WhatsAppSendResult:
 
 class IWhatsAppClient(ABC):
     @abstractmethod
-    async def send_text(self, to: str, text: str) -> WhatsAppSendResult:
-        """Send a text message and return the wamid assigned by Meta."""
+    async def send_text(self, to: str, text: str, phone_number_id: str) -> WhatsAppSendResult:
+        """Send a text message from phone_number_id and return the wamid assigned by Meta."""
         ...

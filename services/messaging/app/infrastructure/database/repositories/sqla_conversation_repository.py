@@ -10,10 +10,16 @@ from app.infrastructure.database.models import MessageORM
 
 _BUYER = SenderRole.BUYER.value
 
-# Expression: phone number of the buyer side of the conversation
+# Derive buyer phone from sender_role for historical messages (no conversation_id)
 _buyer_phone = case(
     (MessageORM.sender_role == _BUYER, MessageORM.sender_id),
     else_=MessageORM.recipient_id,
+)
+
+# Unified contact expression: prefer customer_external_id when available (new msgs), fall back to role-derived
+_contact_phone = case(
+    (MessageORM.customer_external_id.isnot(None), MessageORM.customer_external_id),
+    else_=_buyer_phone,
 )
 
 
@@ -23,14 +29,26 @@ class SqlaConversationRepository(IConversationRepository):
         self._session = session
 
     async def list_contacts(self, business_phone_id: str, platform: str) -> list[Contact]:
+        # Filter messages that belong to this business account (new + historical)
+        _biz_filter = or_(
+            MessageORM.business_account_id == business_phone_id,
+            and_(
+                MessageORM.business_account_id.is_(None),
+                or_(
+                    MessageORM.sender_id == business_phone_id,
+                    MessageORM.recipient_id == business_phone_id,
+                ),
+            ),
+        )
+
         # Subquery 1: last message timestamp per contact
         last_sub = (
             select(
-                _buyer_phone.label("contact_id"),
+                _contact_phone.label("contact_id"),
                 func.max(MessageORM.received_at).label("last_at"),
             )
-            .where(MessageORM.platform == platform)
-            .group_by(_buyer_phone)
+            .where(MessageORM.platform == platform, _biz_filter)
+            .group_by(_contact_phone)
             .subquery()
         )
 
@@ -40,10 +58,7 @@ class SqlaConversationRepository(IConversationRepository):
             .join(
                 last_sub,
                 and_(
-                    case(
-                        (MessageORM.sender_role == _BUYER, MessageORM.sender_id),
-                        else_=MessageORM.recipient_id,
-                    ) == last_sub.c.contact_id,
+                    _contact_phone == last_sub.c.contact_id,
                     MessageORM.received_at == last_sub.c.last_at,
                     MessageORM.platform == platform,
                 ),
@@ -76,17 +91,28 @@ class SqlaConversationRepository(IConversationRepository):
         name_rows = (await self._session.execute(name_stmt)).all()
         names: dict[str, str] = {r.sender_id: r.sender_name for r in name_rows}
 
-        return [
-            Contact(
-                contact_id=r.sender_id if r.sender_role == _BUYER else r.recipient_id,
-                platform=Platform(r.platform),
-                name=names.get(r.sender_id if r.sender_role == _BUYER else r.recipient_id),
-                last_message_text=r.raw_text,
-                last_message_at=r.received_at,
-                last_sender_role=SenderRole(r.sender_role),
+        result: list[Contact] = []
+        for r in rows:
+            # Determine the contact_id for this row
+            if r.customer_external_id is not None:
+                contact_id = r.customer_external_id
+            elif r.sender_role == _BUYER:
+                contact_id = r.sender_id
+            else:
+                contact_id = r.recipient_id
+
+            result.append(
+                Contact(
+                    contact_id=contact_id,
+                    platform=Platform(r.platform),
+                    name=names.get(contact_id),
+                    last_message_text=r.raw_text,
+                    last_message_at=r.received_at,
+                    last_sender_role=SenderRole(r.sender_role),
+                )
             )
-            for r in rows
-        ]
+
+        return result
 
     async def get_messages(
         self,
@@ -96,20 +122,30 @@ class SqlaConversationRepository(IConversationRepository):
         limit: int = 50,
         offset: int = 0,
     ) -> list[IncomingMessage]:
+        expected_conversation_id = f"{business_phone_id}_{contact_id}"
+
         stmt = (
             select(MessageORM)
             .where(
-                MessageORM.platform == platform,
                 or_(
+                    # New messages: use conversation_id
+                    MessageORM.conversation_id == expected_conversation_id,
+                    # Historical messages: bidirectional sender/recipient match
                     and_(
-                        MessageORM.sender_id == contact_id,
-                        MessageORM.recipient_id == business_phone_id,
+                        MessageORM.conversation_id.is_(None),
+                        MessageORM.platform == platform,
+                        or_(
+                            and_(
+                                MessageORM.sender_id == contact_id,
+                                MessageORM.recipient_id == business_phone_id,
+                            ),
+                            and_(
+                                MessageORM.sender_id == business_phone_id,
+                                MessageORM.recipient_id == contact_id,
+                            ),
+                        ),
                     ),
-                    and_(
-                        MessageORM.sender_id == business_phone_id,
-                        MessageORM.recipient_id == contact_id,
-                    ),
-                ),
+                )
             )
             .order_by(MessageORM.received_at.asc())
             .limit(limit)
@@ -133,4 +169,7 @@ def _to_entity(orm: MessageORM) -> IncomingMessage:
         raw_payload=orm.raw_payload,
         received_at=orm.received_at,
         created_at=orm.created_at,
+        conversation_id=orm.conversation_id,
+        business_account_id=orm.business_account_id,
+        customer_external_id=orm.customer_external_id,
     )
