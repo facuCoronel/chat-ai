@@ -73,6 +73,36 @@ async def test_duplicate_message_is_skipped():
 
 
 @pytest.mark.asyncio
+async def test_audio_media_id_is_passed_to_entity():
+    request = _make_request(
+        message_type=MessageType.AUDIO,
+        raw_text=None,
+        media_id="MEDIA_ID_123",
+    )
+    mock_repo = AsyncMock()
+    mock_repo.exists_by_wamid.return_value = False
+    mock_business_repo = AsyncMock()
+    mock_business_repo.get_active_external_ids.return_value = {request.recipient_id}
+
+    saved_entity = None
+
+    async def capture_save(entity: IncomingMessage) -> IncomingMessage:
+        nonlocal saved_entity
+        saved_entity = entity
+        return entity
+
+    mock_repo.save.side_effect = capture_save
+
+    use_case = ReceiveMessageUseCase(mock_repo, mock_business_repo)
+    await use_case.execute(request)
+
+    assert saved_entity is not None
+    assert saved_entity.media_id == "MEDIA_ID_123"
+    assert saved_entity.message_type == MessageType.AUDIO
+    assert saved_entity.raw_text is None
+
+
+@pytest.mark.asyncio
 async def test_message_entity_fields_are_set_correctly():
     request = _make_request(raw_text="Hola mundo", message_type=MessageType.TEXT)
     mock_repo = AsyncMock()

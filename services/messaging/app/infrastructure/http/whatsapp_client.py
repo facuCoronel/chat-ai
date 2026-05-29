@@ -40,3 +40,30 @@ class HttpxWhatsAppClient(IWhatsAppClient):
         wamid = response.json()["messages"][0]["id"]
         logger.info("whatsapp send ok wamid=%s to=%s", wamid, to)
         return WhatsAppSendResult(wamid=wamid)
+
+    async def download_media(self, media_id: str) -> bytes:
+        headers = {"Authorization": f"Bearer {self._access_token}"}
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            try:
+                # Step 1: resolve the CDN URL
+                meta_url = f"{_GRAPH_API_BASE}/{media_id}"
+                logger.info("whatsapp media resolve media_id=%s", media_id)
+                resolve = await client.get(meta_url, headers=headers)
+                resolve.raise_for_status()
+                cdn_url = resolve.json()["url"]
+
+                # Step 2: download the binary content
+                logger.info("whatsapp media download cdn_url=%.80s", cdn_url)
+                media_response = await client.get(cdn_url, headers=headers)
+                media_response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                body = exc.response.text
+                logger.error(
+                    "whatsapp media download error status=%d body=%.200s",
+                    exc.response.status_code,
+                    body,
+                )
+                raise RuntimeError(f"WhatsApp media API {exc.response.status_code}: {body}") from exc
+
+        logger.info("whatsapp media downloaded media_id=%s bytes=%d", media_id, len(media_response.content))
+        return media_response.content

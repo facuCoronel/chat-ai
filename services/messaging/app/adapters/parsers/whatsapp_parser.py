@@ -37,6 +37,10 @@ class WhatsAppWebhookParser(IWebhookParser):
         if message_type == MessageType.TEXT:
             raw_text = msg.get("text", {}).get("body")
 
+        media_id: Optional[str] = None
+        if message_type == MessageType.AUDIO:
+            media_id = msg.get("audio", {}).get("id")
+
         return ReceiveMessageRequest(
             wamid=msg["id"],
             platform=Platform.WHATSAPP,
@@ -45,6 +49,7 @@ class WhatsAppWebhookParser(IWebhookParser):
             recipient_id=value["metadata"]["phone_number_id"],
             message_type=message_type,
             raw_text=raw_text,
+            media_id=media_id,
             raw_payload=payload,
             received_at_unix=int(msg["timestamp"]),
         )

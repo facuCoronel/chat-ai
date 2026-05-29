@@ -21,6 +21,7 @@ class GenerateInsightRequest:
     received_at: datetime
     sender_name: Optional[str] = None
     raw_text: Optional[str] = None
+    media_id: Optional[str] = None
 
 
 @dataclass
@@ -35,6 +36,7 @@ class GenerateInsightResponse:
     intent: str = ""
     urgency: str = ""
     commercial_risk: str = ""
+    audio_transcription: Optional[str] = None
 
 
 @dataclass

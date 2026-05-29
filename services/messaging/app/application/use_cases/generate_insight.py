@@ -5,7 +5,7 @@ import logging
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from app.application.dtos.insight_dto import GenerateInsightRequest, GenerateInsightResponse
 from app.domain.entities.insight import (
@@ -17,11 +17,13 @@ from app.domain.entities.insight import (
     Sentiment,
     Urgency,
 )
+from app.domain.entities.message import MessageType
 
 if TYPE_CHECKING:
     from app.application.ports.insight_generator import IInsightGenerator
     from app.application.ports.insight_repository_factory import IInsightRepositoryContextFactory
     from app.domain.services.ollama_client import IOllamaClient
+    from app.domain.services.whatsapp_client import IWhatsAppClient
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +47,35 @@ class GenerateInsightUseCase:
         ollama_client: "IOllamaClient",
         model: str,
         prompt_version: str,
+        whatsapp_client: Optional["IWhatsAppClient"] = None,
+        whisper_model: str = "",
     ) -> None:
         self._repo_factory = repo_factory
         self._ollama_client = ollama_client
         self._model = model
         self._prompt_version = prompt_version
+        self._whatsapp_client = whatsapp_client
+        self._whisper_model = whisper_model
 
     async def execute(self, request: GenerateInsightRequest) -> GenerateInsightResponse:
-        if not request.raw_text or not request.raw_text.strip():
+        effective_text = request.raw_text
+
+        if (
+            request.message_type == MessageType.AUDIO
+            and request.media_id
+            and self._whatsapp_client
+            and self._whisper_model
+        ):
+            audio_bytes = await self._whatsapp_client.download_media(request.media_id)
+            effective_text = await self._ollama_client.transcribe(audio_bytes, self._whisper_model)
+            logger.info(
+                "audio transcribed media_id=%s chars=%d wamid=%s",
+                request.media_id,
+                len(effective_text),
+                request.wamid,
+            )
+
+        if not effective_text or not effective_text.strip():
             logger.debug(
                 "insight skipped — no text content wamid=%s message_type=%s",
                 request.wamid,
@@ -75,7 +98,7 @@ class GenerateInsightUseCase:
         context_summary = _build_context_summary(history)
         prompt = _build_prompt(
             sender_role=request.sender_role,
-            current_text=request.raw_text,
+            current_text=effective_text,
             context_summary=context_summary,
             prompt_version=self._prompt_version,
         )
@@ -121,6 +144,7 @@ class GenerateInsightUseCase:
             model_name=self._model,
             prompt_version=self._prompt_version,
             created_at=datetime.now(tz=timezone.utc),
+            audio_transcription=effective_text if request.message_type == MessageType.AUDIO else None,
         )
 
         async with self._repo_factory() as repo:
@@ -142,6 +166,7 @@ class GenerateInsightUseCase:
             intent=saved.intent.value,
             urgency=saved.urgency.value,
             commercial_risk=saved.commercial_risk.value,
+            audio_transcription=saved.audio_transcription,
         )
 
 

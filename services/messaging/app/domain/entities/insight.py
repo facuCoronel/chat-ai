@@ -73,3 +73,4 @@ class MessageInsight:
     prompt_version: str
     created_at: datetime
     sender_name: Optional[str] = None
+    audio_transcription: Optional[str] = None

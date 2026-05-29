@@ -43,3 +43,28 @@ class HttpxOllamaClient(IOllamaClient):
                 raise
 
         return response.json()["response"]
+
+    async def transcribe(self, audio_bytes: bytes, model: str) -> str:
+        url = f"{self._base_url}/v1/audio/transcriptions"
+        logger.debug("ollama transcribe url=%s model=%s bytes=%d", url, model, len(audio_bytes))
+        async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
+            try:
+                response = await client.post(
+                    url,
+                    files={"file": ("audio.ogg", audio_bytes, "audio/ogg")},
+                    data={"model": model},
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                logger.error(
+                    "ollama transcribe HTTP error url=%s status=%d body=%.200s",
+                    url,
+                    exc.response.status_code,
+                    exc.response.text,
+                )
+                raise
+            except httpx.RequestError as exc:
+                logger.error("ollama transcribe request error url=%s error=%s", url, exc)
+                raise
+
+        return response.json()["text"]

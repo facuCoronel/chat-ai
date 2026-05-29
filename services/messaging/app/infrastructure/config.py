@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str
     OLLAMA_MODEL: str
     OLLAMA_PROMPT_VERSION: str
+    OLLAMA_WHISPER_MODEL: str = "whisper"
     WHATSAPP_ACCESS_TOKEN: str = ""
     CORS_ORIGINS: list[str] = ["*"]
 

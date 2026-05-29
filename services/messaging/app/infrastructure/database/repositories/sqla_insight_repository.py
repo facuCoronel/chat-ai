@@ -85,6 +85,7 @@ def _to_orm(entity: MessageInsight) -> InsightORM:
         model_name=entity.model_name,
         prompt_version=entity.prompt_version,
         created_at=entity.created_at,
+        audio_transcription=entity.audio_transcription,
     )
 
 
@@ -110,4 +111,5 @@ def _to_entity(orm: InsightORM) -> MessageInsight:
         model_name=orm.model_name,
         prompt_version=orm.prompt_version,
         created_at=orm.created_at,
+        audio_transcription=orm.audio_transcription,
     )

@@ -19,6 +19,7 @@ class ReceiveMessageRequest:
     received_at_unix: int
     sender_name: Optional[str] = None
     raw_text: Optional[str] = None
+    media_id: Optional[str] = None
 
 
 @dataclass

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, JSON, String
+from sqlalchemy import Boolean, DateTime, Index, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -46,6 +46,7 @@ class InsightORM(Base):
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
     prompt_version: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    audio_transcription: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         Index("ix_message_insights_message_id", "message_id"),
@@ -69,6 +70,7 @@ class MessageORM(Base):
     sender_role: Mapped[str] = mapped_column(String(20), nullable=False, server_default="buyer")
     message_type: Mapped[str] = mapped_column(String(30), nullable=False)
     raw_text: Mapped[str | None] = mapped_column(String(4096), nullable=True)
+    media_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

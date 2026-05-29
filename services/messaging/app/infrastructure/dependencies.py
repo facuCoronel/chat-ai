@@ -33,6 +33,10 @@ def get_ollama_client(settings: Settings = Depends(get_settings)) -> IOllamaClie
     return HttpxOllamaClient(base_url=settings.OLLAMA_BASE_URL)
 
 
+def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsAppClient:
+    return HttpxWhatsAppClient(access_token=settings.WHATSAPP_ACCESS_TOKEN)
+
+
 def get_insight_repo_factory(
     settings: Settings = Depends(get_settings),
 ) -> SqlaInsightRepositoryFactory:
@@ -42,6 +46,7 @@ def get_insight_repo_factory(
 def get_generate_insight_use_case(
     repo_factory: SqlaInsightRepositoryFactory = Depends(get_insight_repo_factory),
     ollama_client: IOllamaClient = Depends(get_ollama_client),
+    whatsapp_client: IWhatsAppClient = Depends(get_whatsapp_client),
     settings: Settings = Depends(get_settings),
 ) -> GenerateInsightUseCase:
     return GenerateInsightUseCase(
@@ -49,6 +54,8 @@ def get_generate_insight_use_case(
         ollama_client=ollama_client,
         model=settings.OLLAMA_MODEL,
         prompt_version=settings.OLLAMA_PROMPT_VERSION,
+        whatsapp_client=whatsapp_client,
+        whisper_model=settings.OLLAMA_WHISPER_MODEL,
     )
 
 
@@ -75,10 +82,6 @@ async def get_receive_message_use_case(
         insight_generator=insight_generator,
         message_publisher=publisher,
     )
-
-
-def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsAppClient:
-    return HttpxWhatsAppClient(access_token=settings.WHATSAPP_ACCESS_TOKEN)
 
 
 async def get_list_contacts_use_case(

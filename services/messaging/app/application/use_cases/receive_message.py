@@ -79,6 +79,7 @@ class ReceiveMessageUseCase:
             sender_role=sender_role,
             message_type=request.message_type,
             raw_text=request.raw_text,
+            media_id=request.media_id,
             raw_payload=request.raw_payload,
             received_at=datetime.fromtimestamp(request.received_at_unix, tz=timezone.utc),
             created_at=datetime.now(tz=timezone.utc),
@@ -102,6 +103,7 @@ class ReceiveMessageUseCase:
                 sender_role=sender_role.value,
                 sender_name=saved.sender_name,
                 raw_text=saved.raw_text,
+                media_id=saved.media_id,
                 message_type=saved.message_type,
                 received_at=saved.received_at,
             )

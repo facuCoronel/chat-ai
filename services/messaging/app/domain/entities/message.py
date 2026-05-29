@@ -49,6 +49,7 @@ class IncomingMessage:
     sender_role: SenderRole = SenderRole.UNKNOWN
     sender_name: Optional[str] = None
     raw_text: Optional[str] = None
+    media_id: Optional[str] = None
     conversation_id: Optional[str] = None
     business_account_id: Optional[str] = None
     customer_external_id: Optional[str] = None
