@@ -20,6 +20,7 @@ from app.infrastructure.database.repositories.sqla_business_account_repository i
 from app.infrastructure.database.repositories.sqla_conversation_repository import SqlaConversationRepository
 from app.infrastructure.database.repositories.sqla_message_repository import SqlaMessageRepository
 from app.infrastructure.http.ollama_client import HttpxOllamaClient
+from app.infrastructure.http.whisper_client import HttpxWhisperClient
 from app.infrastructure.http.whatsapp_client import HttpxWhatsAppClient
 from app.infrastructure.websocket.connection_manager import WebSocketConnectionManager, connection_manager
 
@@ -31,6 +32,12 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 def get_ollama_client(settings: Settings = Depends(get_settings)) -> IOllamaClient:
     return HttpxOllamaClient(base_url=settings.OLLAMA_BASE_URL)
+
+
+def get_transcription_client(settings: Settings = Depends(get_settings)) -> IOllamaClient | None:
+    if settings.WHISPER_BASE_URL:
+        return HttpxWhisperClient(base_url=settings.WHISPER_BASE_URL, api_key=settings.WHISPER_API_KEY)
+    return None
 
 
 def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsAppClient:
@@ -46,6 +53,7 @@ def get_insight_repo_factory(
 def get_generate_insight_use_case(
     repo_factory: SqlaInsightRepositoryFactory = Depends(get_insight_repo_factory),
     ollama_client: IOllamaClient = Depends(get_ollama_client),
+    transcription_client: IOllamaClient | None = Depends(get_transcription_client),
     whatsapp_client: IWhatsAppClient = Depends(get_whatsapp_client),
     settings: Settings = Depends(get_settings),
 ) -> GenerateInsightUseCase:
@@ -55,7 +63,7 @@ def get_generate_insight_use_case(
         model=settings.OLLAMA_MODEL,
         prompt_version=settings.OLLAMA_PROMPT_VERSION,
         whatsapp_client=whatsapp_client,
-        whisper_model=settings.OLLAMA_WHISPER_MODEL,
+        transcription_client=transcription_client,
     )
 
 

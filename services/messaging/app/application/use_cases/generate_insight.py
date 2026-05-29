@@ -48,14 +48,14 @@ class GenerateInsightUseCase:
         model: str,
         prompt_version: str,
         whatsapp_client: Optional["IWhatsAppClient"] = None,
-        whisper_model: str = "",
+        transcription_client: Optional["IOllamaClient"] = None,
     ) -> None:
         self._repo_factory = repo_factory
         self._ollama_client = ollama_client
         self._model = model
         self._prompt_version = prompt_version
         self._whatsapp_client = whatsapp_client
-        self._whisper_model = whisper_model
+        self._transcription_client = transcription_client
 
     async def execute(self, request: GenerateInsightRequest) -> GenerateInsightResponse:
         effective_text = request.raw_text
@@ -64,10 +64,10 @@ class GenerateInsightUseCase:
             request.message_type == MessageType.AUDIO
             and request.media_id
             and self._whatsapp_client
-            and self._whisper_model
+            and self._transcription_client
         ):
             audio_bytes = await self._whatsapp_client.download_media(request.media_id)
-            effective_text = await self._ollama_client.transcribe(audio_bytes, self._whisper_model)
+            effective_text = await self._transcription_client.transcribe(audio_bytes, "")
             logger.info(
                 "audio transcribed media_id=%s chars=%d wamid=%s",
                 request.media_id,

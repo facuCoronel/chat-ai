@@ -78,14 +78,14 @@ def _make_repo_factory(mock_repo):
     return _factory
 
 
-def _make_use_case(mock_repo, mock_ollama, mock_wa=None, whisper_model=""):
+def _make_use_case(mock_repo, mock_ollama, mock_wa=None, transcription_client=None):
     return GenerateInsightUseCase(
         repo_factory=_make_repo_factory(mock_repo),
         ollama_client=mock_ollama,
         model="llama3",
         prompt_version="v1",
         whatsapp_client=mock_wa,
-        whisper_model=whisper_model,
+        transcription_client=transcription_client,
     )
 
 
@@ -131,8 +131,10 @@ async def test_audio_message_transcribes_and_generates_insight():
         media_id="MEDIA_ID_123",
     )
     mock_ollama = AsyncMock()
-    mock_ollama.transcribe.return_value = "Hola, quiero cancelar mi pedido"
     mock_ollama.generate.return_value = _VALID_OLLAMA_RESPONSE
+
+    mock_whisper = AsyncMock()
+    mock_whisper.transcribe.return_value = "Hola, quiero cancelar mi pedido"
 
     mock_wa = AsyncMock()
     mock_wa.download_media.return_value = b"fake-audio-bytes"
@@ -143,11 +145,12 @@ async def test_audio_message_transcribes_and_generates_insight():
         audio_transcription="Hola, quiero cancelar mi pedido"
     )
 
-    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, whisper_model="whisper")
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=mock_whisper)
     response = await use_case.execute(request)
 
     mock_wa.download_media.assert_called_once_with("MEDIA_ID_123")
-    mock_ollama.transcribe.assert_called_once_with(b"fake-audio-bytes", "whisper")
+    mock_whisper.transcribe.assert_called_once_with(b"fake-audio-bytes", "")
+    mock_ollama.transcribe.assert_not_called()
     mock_ollama.generate.assert_called_once()
     assert response.was_skipped is False
     assert response.audio_transcription == "Hola, quiero cancelar mi pedido"
@@ -173,7 +176,7 @@ async def test_audio_without_whatsapp_client_is_skipped():
 
 
 @pytest.mark.asyncio
-async def test_audio_without_whisper_model_is_skipped():
+async def test_audio_without_transcription_client_is_skipped():
     request = _make_request(
         raw_text=None,
         message_type=MessageType.AUDIO,
@@ -183,8 +186,8 @@ async def test_audio_without_whisper_model_is_skipped():
     mock_wa = AsyncMock()
     mock_repo = AsyncMock()
 
-    # whisper_model="" → audio path disabled
-    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, whisper_model="")
+    # transcription_client=None → audio path disabled
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=None)
     response = await use_case.execute(request)
 
     assert response.was_skipped is True
@@ -199,8 +202,10 @@ async def test_audio_transcription_is_stored_in_saved_entity():
         media_id="MEDIA_ID_123",
     )
     mock_ollama = AsyncMock()
-    mock_ollama.transcribe.return_value = "Texto transcripto del audio"
     mock_ollama.generate.return_value = _VALID_OLLAMA_RESPONSE
+
+    mock_whisper = AsyncMock()
+    mock_whisper.transcribe.return_value = "Texto transcripto del audio"
 
     mock_wa = AsyncMock()
     mock_wa.download_media.return_value = b"audio"
@@ -217,7 +222,7 @@ async def test_audio_transcription_is_stored_in_saved_entity():
 
     mock_repo.save.side_effect = capture_save
 
-    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, whisper_model="whisper")
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=mock_whisper)
     await use_case.execute(request)
 
     assert saved_insight is not None
@@ -246,3 +251,142 @@ async def test_text_message_has_no_audio_transcription():
 
     assert saved_insight is not None
     assert saved_insight.audio_transcription is None
+
+
+@pytest.mark.asyncio
+async def test_ollama_invalid_json_raises():
+    request = _make_request()
+    mock_ollama = AsyncMock()
+    mock_ollama.generate.return_value = "esto no es json"
+    mock_repo = AsyncMock()
+    mock_repo.find_recent_by_conversation.return_value = []
+
+    use_case = _make_use_case(mock_repo, mock_ollama)
+
+    with pytest.raises(ValueError, match="not valid JSON"):
+        await use_case.execute(request)
+
+    mock_repo.save.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ollama_response_missing_keys_raises():
+    request = _make_request()
+    mock_ollama = AsyncMock()
+    mock_ollama.generate.return_value = json.dumps({"sentiment": "neutral"})
+    mock_repo = AsyncMock()
+    mock_repo.find_recent_by_conversation.return_value = []
+
+    use_case = _make_use_case(mock_repo, mock_ollama)
+
+    with pytest.raises(ValueError, match="missing required keys"):
+        await use_case.execute(request)
+
+    mock_repo.save.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_transcription_error_propagates():
+    request = _make_request(
+        raw_text=None,
+        message_type=MessageType.AUDIO,
+        media_id="MEDIA_ID_123",
+    )
+    mock_ollama = AsyncMock()
+    mock_whisper = AsyncMock()
+    mock_whisper.transcribe.side_effect = RuntimeError("whisper server error")
+    mock_wa = AsyncMock()
+    mock_wa.download_media.return_value = b"audio-bytes"
+    mock_repo = AsyncMock()
+
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=mock_whisper)
+
+    with pytest.raises(RuntimeError, match="whisper server error"):
+        await use_case.execute(request)
+
+    mock_ollama.generate.assert_not_called()
+    mock_repo.save.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_audio_without_media_id_is_skipped():
+    request = _make_request(
+        raw_text=None,
+        message_type=MessageType.AUDIO,
+        media_id=None,
+    )
+    mock_ollama = AsyncMock()
+    mock_whisper = AsyncMock()
+    mock_wa = AsyncMock()
+    mock_repo = AsyncMock()
+
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=mock_whisper)
+    response = await use_case.execute(request)
+
+    assert response.was_skipped is True
+    mock_wa.download_media.assert_not_called()
+    mock_whisper.transcribe.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_audio_with_empty_transcription_is_skipped():
+    request = _make_request(
+        raw_text=None,
+        message_type=MessageType.AUDIO,
+        media_id="MEDIA_ID_123",
+    )
+    mock_ollama = AsyncMock()
+    mock_whisper = AsyncMock()
+    mock_whisper.transcribe.return_value = "   "
+    mock_wa = AsyncMock()
+    mock_wa.download_media.return_value = b"audio-bytes"
+    mock_repo = AsyncMock()
+
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=mock_whisper)
+    response = await use_case.execute(request)
+
+    assert response.was_skipped is True
+    mock_ollama.generate.assert_not_called()
+    mock_repo.save.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_transcribed_text_is_sent_to_generate():
+    request = _make_request(
+        raw_text=None,
+        message_type=MessageType.AUDIO,
+        media_id="MEDIA_ID_123",
+    )
+    transcribed = "quiero hacer una devolución"
+    mock_ollama = AsyncMock()
+    mock_ollama.generate.return_value = _VALID_OLLAMA_RESPONSE
+    mock_whisper = AsyncMock()
+    mock_whisper.transcribe.return_value = transcribed
+    mock_wa = AsyncMock()
+    mock_wa.download_media.return_value = b"audio"
+    mock_repo = AsyncMock()
+    mock_repo.find_recent_by_conversation.return_value = []
+    mock_repo.save.return_value = _make_saved_insight()
+
+    use_case = _make_use_case(mock_repo, mock_ollama, mock_wa=mock_wa, transcription_client=mock_whisper)
+    await use_case.execute(request)
+
+    prompt_used = mock_ollama.generate.call_args[0][0]
+    assert transcribed in prompt_used
+
+
+@pytest.mark.asyncio
+async def test_generate_called_with_configured_model():
+    from unittest.mock import ANY
+
+    request = _make_request()
+    mock_ollama = AsyncMock()
+    mock_ollama.generate.return_value = _VALID_OLLAMA_RESPONSE
+    mock_repo = AsyncMock()
+    mock_repo.find_recent_by_conversation.return_value = []
+    mock_repo.save.return_value = _make_saved_insight()
+
+    use_case = _make_use_case(mock_repo, mock_ollama)
+    await use_case.execute(request)
+
+    mock_ollama.generate.assert_called_once_with(ANY, "llama3")
