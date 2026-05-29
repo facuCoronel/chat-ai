@@ -66,8 +66,8 @@ class MessageInsight:
     urgency: Urgency
     commercial_risk: CommercialRisk
     summary: str
-    recommended_action: str
     insights: list[str]
+    keywords: list[str]
     raw_model_response: dict
     model_name: str
     prompt_version: str

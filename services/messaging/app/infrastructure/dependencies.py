@@ -34,10 +34,8 @@ def get_ollama_client(settings: Settings = Depends(get_settings)) -> IOllamaClie
     return HttpxOllamaClient(base_url=settings.OLLAMA_BASE_URL)
 
 
-def get_transcription_client(settings: Settings = Depends(get_settings)) -> IOllamaClient | None:
-    if settings.WHISPER_BASE_URL:
-        return HttpxWhisperClient(base_url=settings.WHISPER_BASE_URL, api_key=settings.WHISPER_API_KEY)
-    return None
+def get_transcription_client(settings: Settings = Depends(get_settings)) -> IOllamaClient:
+    return HttpxWhisperClient(base_url=settings.WHISPER_BASE_URL, api_key=settings.WHISPER_API_KEY)
 
 
 def get_whatsapp_client(settings: Settings = Depends(get_settings)) -> IWhatsAppClient:

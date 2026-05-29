@@ -23,7 +23,7 @@ class HttpxWhisperClient(IOllamaClient):
     async def transcribe(self, audio_bytes: bytes, model: str) -> str:
         url = f"{self._base_url}/v1/audio/transcriptions"
         headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
-        logger.debug("whisper transcribe url=%s bytes=%d", url, len(audio_bytes))
+        logger.info("whisper transcribe start url=%s bytes=%d", url, len(audio_bytes))
         async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
             try:
                 response = await client.post(
@@ -45,4 +45,7 @@ class HttpxWhisperClient(IOllamaClient):
                 logger.error("whisper transcribe request error url=%s error=%s", url, exc)
                 raise
 
-        return response.json()["text"]
+        data = response.json()
+        text = data.get("text", "")
+        logger.info("whisper transcribe done url=%s result_chars=%d text_preview=%.80s", url, len(text), text)
+        return text

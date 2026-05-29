@@ -25,8 +25,8 @@ _VALID_OLLAMA_RESPONSE = json.dumps({
     "urgency": "low",
     "commercial_risk": "low",
     "summary": "Test summary",
-    "recommended_action": "No action needed",
     "insights": ["Test insight"],
+    "keywords": ["test", "summary"],
 })
 
 
@@ -61,8 +61,8 @@ def _make_saved_insight(**overrides) -> MessageInsight:
         urgency=Urgency.LOW,
         commercial_risk=CommercialRisk.LOW,
         summary="Test summary",
-        recommended_action="No action needed",
         insights=["Test insight"],
+        keywords=["test", "summary"],
         raw_model_response={"response": _VALID_OLLAMA_RESPONSE},
         model_name="llama3",
         prompt_version="v1",

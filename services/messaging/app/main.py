@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,6 +10,11 @@ from app.infrastructure.routes.websocket_router import router as ws_router
 from app.infrastructure.config import get_settings
 
 _settings = get_settings()
+
+logging.basicConfig(
+    level=getattr(logging, _settings.LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 
 app = FastAPI(
     title="Messaging Service",

@@ -5,7 +5,10 @@ import logging
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+
+import yaml
 
 from app.application.dtos.insight_dto import GenerateInsightRequest, GenerateInsightResponse
 from app.domain.entities.insight import (
@@ -27,6 +30,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+
 _REQUIRED_KEYS = {
     "sender_role",
     "sentiment",
@@ -35,8 +40,8 @@ _REQUIRED_KEYS = {
     "urgency",
     "commercial_risk",
     "summary",
-    "recommended_action",
     "insights",
+    "keywords",
 }
 
 
@@ -60,19 +65,36 @@ class GenerateInsightUseCase:
     async def execute(self, request: GenerateInsightRequest) -> GenerateInsightResponse:
         effective_text = request.raw_text
 
+        if request.message_type == MessageType.AUDIO:
+            logger.info(
+                "audio message received wamid=%s media_id=%s has_whatsapp_client=%s has_transcription_client=%s",
+                request.wamid,
+                request.media_id,
+                bool(self._whatsapp_client),
+                bool(self._transcription_client),
+            )
+
         if (
             request.message_type == MessageType.AUDIO
             and request.media_id
             and self._whatsapp_client
             and self._transcription_client
         ):
+            logger.info("audio download start media_id=%s wamid=%s", request.media_id, request.wamid)
             audio_bytes = await self._whatsapp_client.download_media(request.media_id)
+            logger.info("audio download done media_id=%s bytes=%d wamid=%s", request.media_id, len(audio_bytes), request.wamid)
             effective_text = await self._transcription_client.transcribe(audio_bytes, "")
             logger.info(
                 "audio transcribed media_id=%s chars=%d wamid=%s",
                 request.media_id,
                 len(effective_text),
                 request.wamid,
+            )
+        elif request.message_type == MessageType.AUDIO:
+            logger.warning(
+                "audio message skipped — transcription not configured wamid=%s media_id=%s",
+                request.wamid,
+                request.media_id,
             )
 
         if not effective_text or not effective_text.strip():
@@ -138,8 +160,8 @@ class GenerateInsightUseCase:
             urgency=Urgency(parsed["urgency"]),
             commercial_risk=CommercialRisk(parsed["commercial_risk"]),
             summary=parsed["summary"],
-            recommended_action=parsed["recommended_action"],
             insights=parsed["insights"],
+            keywords=parsed["keywords"],
             raw_model_response={"response": raw_response},
             model_name=self._model,
             prompt_version=self._prompt_version,
@@ -170,6 +192,20 @@ class GenerateInsightUseCase:
         )
 
 
+_prompt_cache: dict[str, str] = {}
+
+
+def _load_prompt_template(version: str) -> str:
+    if version in _prompt_cache:
+        return _prompt_cache[version]
+    path = _PROMPTS_DIR / f"insight_{version}.yaml"
+    with path.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    template: str = data["template"]
+    _prompt_cache[version] = template
+    return template
+
+
 def _build_context_summary(history: list[MessageInsight]) -> str:
     if not history:
         return "No prior context."
@@ -186,43 +222,12 @@ def _build_prompt(
     context_summary: str,
     prompt_version: str,
 ) -> str:
-    if prompt_version == "v1":
-        return _build_prompt_v1(sender_role, current_text, context_summary)
-    return _build_prompt_v1(sender_role, current_text, context_summary)
-
-
-def _build_prompt_v1(sender_role: str, current_text: str, context_summary: str) -> str:
-    return f"""You are a conversational intelligence analyst for a commercial messaging platform.
-Analyze the following message and respond ONLY with valid JSON matching the required schema.
-No markdown, no code fences, no extra text.
-Write the values of "summary", "insights", and "recommended_action" in Spanish.
-
-CONVERSATION CONTEXT (prior messages, oldest first):
-{context_summary}
-
-CURRENT MESSAGE:
-- Sender role: {sender_role}
-- Message text: "{current_text}"
-
-RULES:
-1. Use the context to interpret ambiguous short messages ("ok", "dale", "cancelalo", etc.).
-2. commercial_risk=high only for cancellation signals, complaint escalation, or clear sale loss.
-3. Do not invent data not present in the message or context. Use neutral values when uncertain.
-4. A seller message must never be interpreted as a buyer complaint.
-5. Keep sender_role as provided unless the message clearly contradicts it.
-
-REQUIRED JSON SCHEMA:
-{{
-  "sender_role": "buyer | seller | unknown",
-  "sentiment": "positive | neutral | negative | mixed",
-  "main_emotion": "anger | frustration | anxiety | confusion | satisfaction | joy | sadness | urgency | other",
-  "intent": "complaint | question | purchase_intent | support_request | negotiation | cancellation_risk | follow_up | information | other",
-  "urgency": "low | medium | high",
-  "commercial_risk": "low | medium | high",
-  "summary": "one sentence: what the sender wants or is expressing",
-  "insights": ["actionable observation"],
-  "recommended_action": "specific next step for the agent"
-}}"""
+    template = _load_prompt_template(prompt_version)
+    return template.format(
+        sender_role=sender_role,
+        current_text=current_text,
+        context_summary=context_summary,
+    )
 
 
 def _parse_ollama_response(raw: str, wamid: str = "") -> dict:
