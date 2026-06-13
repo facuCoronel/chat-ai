@@ -14,28 +14,20 @@ from app.domain.services.conversation_builder import build_conversation_data
 
 if TYPE_CHECKING:
     from app.application.ports.insight_generator import IInsightGenerator
-    from app.application.ports.message_publisher import IMessagePublisher
 
 logger = logging.getLogger(__name__)
 
 
 class ReceiveMessageUseCase:
-    """
-    Application use case. Depends only on the domain layer.
-    No FastAPI, no SQLAlchemy, no Pydantic.
-    """
-
     def __init__(
         self,
         repository: IMessageRepository,
         business_account_repo: IBusinessAccountRepository,
         insight_generator: Optional["IInsightGenerator"] = None,
-        message_publisher: Optional["IMessagePublisher"] = None,
     ) -> None:
         self._repo = repository
         self._business_account_repo = business_account_repo
         self._insight_generator = insight_generator
-        self._message_publisher = message_publisher
 
     async def execute(
         self,
@@ -89,9 +81,6 @@ class ReceiveMessageUseCase:
         )
 
         saved = await self._repo.save(message)
-
-        if self._message_publisher is not None:
-            asyncio.create_task(self._message_publisher.publish(saved))
 
         if self._insight_generator is not None:
             insight_request = GenerateInsightRequest(

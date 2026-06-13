@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 class HttpxWhisperClient(IOllamaClient):
     """Adapter for the hwdsl2/whisper-server transcription API."""
 
-    def __init__(self, base_url: str, api_key: str = "", timeout: float = 60.0) -> None:
+    def __init__(self, base_url: str, api_key: str = "", timeout: float = 60.0, language: str = "es") -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._timeout = timeout
+        self._language = language
 
     async def generate(self, prompt: str, model: str) -> str:
         raise NotImplementedError("WhisperClient only supports transcription")
@@ -30,7 +31,7 @@ class HttpxWhisperClient(IOllamaClient):
                     url,
                     headers=headers,
                     files={"file": ("audio.ogg", audio_bytes, "audio/ogg")},
-                    data={"model": "whisper-1"},
+                    data={"model": "whisper-1", "language": self._language},
                 )
                 response.raise_for_status()
             except httpx.HTTPStatusError as exc:
